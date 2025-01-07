@@ -6,12 +6,11 @@ actions for user-mode programs. One to read process memory and the other to writ
 
 ## Why?
 
-This project was mainly created just to familiarize myself with Windows kernel development in Rust using
-the [windows-drivers-rs] crate a little bit.
+This project was mainly created just to somewhat familiarize myself with Windows kernel driver development in Rust using
+the [windows-drivers-rs] crate.
 
 ## Special Thanks
 
-Specials thanks to:
 - 0xflux (for the [blog posts] related to building a Rust driver using [windows-drivers-rs])
 
 ## LICENSE
