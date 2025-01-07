@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = ["km", "shared", "um"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["ovxrfl0w"]
+description = "Erebus is a kernel-mode driver written using the official windows-drivers-rs crate. It exposes two IOCTL actions for user-mode programs. One to read process memory and the other to write to process memory. It uses MmCopyVirtualMemory to read/write process memory."
+edition = "2021"
+
+[profile.dev]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
