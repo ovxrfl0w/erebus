@@ -2,6 +2,8 @@ use shared::{
     ioctl::{EREBUS_IOCTL_READ, EREBUS_IOCTL_WRITE},
     ipc::Request,
 };
+use std::ffi::c_void;
+use std::{error::Error, mem::MaybeUninit, ptr::from_ref};
 use windows::{
     core::HSTRING,
     Win32::{
@@ -40,22 +42,21 @@ impl Driver {
         &self,
         ioctl_code: u32,
         request: Request,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
         #[cfg(debug_assertions)]
         println!("Issuing IOCTL {ioctl_code:#x}");
 
-        let mut output_buffer = Vec::<u8>::with_capacity(1024);
+        let mut output_buffer: Vec<u8> = Vec::with_capacity(1024);
         let mut bytes_returned: u32 = 0;
 
-        #[allow(clippy::cast_possible_truncation)]
         unsafe {
             let result = DeviceIoControl(
                 self.handle,
                 ioctl_code,
                 Some(std::ptr::addr_of!(request).cast()),
-                size_of::<Request>() as _,
+                size_of::<Request>().try_into()?,
                 Some(output_buffer.as_mut_ptr().cast()),
-                output_buffer.capacity() as _,
+                output_buffer.capacity().try_into()?,
                 Some(&mut bytes_returned),
                 None,
             );
@@ -78,43 +79,41 @@ impl Driver {
 
     pub(crate) fn read_process_memory<T>(
         &self,
-        process_id: u64,
+        process_id: u32,
         address: *mut T,
-        size: usize,
-    ) -> Result<Vec<T>, Box<dyn std::error::Error>>
+    ) -> Result<T, Box<dyn Error>>
     where
         T: Copy + Sized,
     {
-        let mut buffer: Vec<T> = Vec::with_capacity(size);
+        let mut buffer = MaybeUninit::<T>::uninit();
 
         let request = Request {
             process_id,
             address: address.cast(),
             buffer: buffer.as_mut_ptr().cast(),
-            size: size * size_of::<T>(),
+            size: size_of::<T>() as u64,
         };
 
         self.issue_ioctl(EREBUS_IOCTL_READ, request)?;
 
-        unsafe { buffer.set_len(size) };
-
-        Ok(buffer)
+        // Safety: `buffer` should be initialized after `issue_ioctl` succeeds.
+        Ok(unsafe { buffer.assume_init() })
     }
 
     pub(crate) fn write_process_memory<T>(
         &self,
-        process_id: u64,
-        address: *mut std::ffi::c_void,
-        buffer: &[T],
-    ) -> Result<(), Box<dyn std::error::Error>>
+        process_id: u32,
+        address: *mut T,
+        buffer: &T,
+    ) -> Result<(), Box<dyn Error>>
     where
         T: Copy + Sized,
     {
         let request = Request {
             process_id,
             address: address.cast(),
-            buffer: buffer.as_ptr() as _,
-            size: size_of_val(buffer),
+            buffer: from_ref::<T>(buffer) as *mut c_void,
+            size: size_of_val(buffer) as u64,
         };
 
         self.issue_ioctl(EREBUS_IOCTL_WRITE, request)?;

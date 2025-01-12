@@ -9,7 +9,7 @@ pub(crate) struct Process {
 }
 
 impl Process {
-    pub fn by_id(process_id: u64) -> Result<Self, NTSTATUS> {
+    pub fn by_id(process_id: u32) -> Result<Self, NTSTATUS> {
         let mut process = core::ptr::null_mut();
 
         let status = unsafe { PsLookupProcessByProcessId(process_id as HANDLE, &mut process) };

@@ -10,8 +10,8 @@ pub unsafe fn ke_read_virtual_memory(
     process: PEPROCESS,
     source_address: *mut c_void,
     target_address: *mut c_void,
-    size_t: usize,
-    bytes_read: &mut usize,
+    size_t: u64,
+    bytes_read: &mut u64,
 ) -> NTSTATUS {
     if nt_success(MmCopyVirtualMemory(
         process,
@@ -32,8 +32,8 @@ pub unsafe fn ke_write_virtual_memory(
     process: PEPROCESS,
     source_address: *mut c_void,
     target_address: *mut c_void,
-    size_t: usize,
-    bytes_read: &mut usize,
+    size_t: u64,
+    bytes_read: &mut u64,
 ) -> NTSTATUS {
     if nt_success(MmCopyVirtualMemory(
         IoGetCurrentProcess(),
@@ -50,10 +50,10 @@ pub unsafe fn ke_write_virtual_memory(
     }
 }
 
-pub fn is_valid_user_memory(address: u64, size: u64) -> bool {
+pub fn is_valid_user_memory(address: usize, size: usize) -> bool {
     // Define user-mode memory bounds
-    const USER_MODE_ADDRESS_LOWER_BOUND: u64 = 0x00000000_00010000;
-    const USER_MODE_ADDRESS_UPPER_BOUND: u64 = 0x000007FF_FFFFFFFF;
+    const USER_MODE_ADDRESS_LOWER_BOUND: usize = 0x00000000_00010000;
+    const USER_MODE_ADDRESS_UPPER_BOUND: usize = 0x000007FF_FFFFFFFF;
 
     // Ensure address + size doesn't overflow
     if address.checked_add(size).is_none() {

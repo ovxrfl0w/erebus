@@ -1,4 +1,6 @@
-use wdk_sys::{KPROCESSOR_MODE, NTSTATUS, PEPROCESS, PIO_STACK_LOCATION, PIRP, PVOID};
+use wdk_sys::{
+    KPROCESSOR_MODE, NTSTATUS, PEPROCESS, PIO_STACK_LOCATION, PIRP, PSIZE_T, PVOID, SIZE_T,
+};
 
 #[allow(non_snake_case)]
 pub unsafe fn IoGetCurrentIrpStackLocation(p_irp: PIRP) -> PIO_STACK_LOCATION {
@@ -18,8 +20,8 @@ extern "C" {
         SourceAddress: PVOID,
         TargetProcess: PEPROCESS,
         TargetAddress: PVOID,
-        BufferSize: usize,
+        BufferSize: SIZE_T,
         PreviousMode: KPROCESSOR_MODE,
-        ReturnSize: &mut usize,
+        ReturnSize: PSIZE_T,
     ) -> NTSTATUS;
 }

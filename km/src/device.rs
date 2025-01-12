@@ -135,43 +135,41 @@ pub fn ioctl_handler_read(
     let Process { process } = Process::by_id(process_id)?;
 
     println!(
-        LogLevel::Info,
-        "Resolved process with PID {} and PEPROCESS at {:?}", process_id, process
+        LogLevel::Success,
+        "Resolved process with PID {} and _EPROCESS at {:?}", process_id, process
     );
 
     // Pre-checks before accessing unsafe memory
     if !is_valid_user_memory(address as _, size as _) {
         println!(
             LogLevel::Error,
-            "Invalid memory range: Address = {:#x}, Size = {}", address as usize, size
+            "Invalid memory range: {:p}+{:#x}", address, size
         );
         return Err(STATUS_ACCESS_VIOLATION);
     }
 
-    unsafe { ProbeForRead(address as _, size as _, 1) };
+    // Ensure the address is valid and accessible
+    // If it's not, it raises an exception and since we don't have SEH, well, BSOD...
+    // TODO: figure out a way to make this safer
+    unsafe { ProbeForRead(address, size, 1) };
 
-    let mut bytes_read: usize = 0;
-    let status = unsafe {
-        ke_read_virtual_memory(process, address as _, buffer as _, size, &mut bytes_read)
-    };
+    let mut bytes_read = 0;
+    let status = unsafe { ke_read_virtual_memory(process, address, buffer, size, &mut bytes_read) };
 
     if !nt_success(status) {
         println!(
             LogLevel::Error,
-            "Error copying VirtualMemory! Error: {:?}", status
+            "Error copying VirtualMemory! Error: {:#x}", status
         );
         return Err(STATUS_UNSUCCESSFUL);
     }
 
     println!(
-        LogLevel::Info,
-        "Read {} bytes from {:#x}", bytes_read, address as usize
+        LogLevel::Success,
+        "Read {} bytes from {:p}", bytes_read, address
     );
 
-    ioctl_buffer.send_str(&format!(
-        "Copied {} bytes from {:#x}!",
-        bytes_read, address as usize
-    ))?;
+    ioctl_buffer.send_str(&format!("Copied {} bytes from {:p}!", bytes_read, address))?;
 
     Ok(())
 }
@@ -192,47 +190,54 @@ pub fn ioctl_handler_write(
         size,
     } = request;
 
+    if size == 0 {
+        println!(
+            LogLevel::Error,
+            "Invalid size specified in IOCTL request: {}", size
+        );
+        return Err(STATUS_UNSUCCESSFUL);
+    }
+
     let Process { process } = Process::by_id(process_id)?;
 
     println!(
-        LogLevel::Info,
-        "Resolved process with PID {} and PEPROCESS at {:?}", process_id, process
+        LogLevel::Success,
+        "Resolved process with PID {} and _EPROCESS at {:?}", process_id, process
     );
 
     // Pre-checks before accessing unsafe memory
     if !is_valid_user_memory(address as _, size as _) {
         println!(
             LogLevel::Error,
-            "Invalid memory range: Address = {:#x}, Size = {}", address as usize, size
+            "Invalid memory range: {:p}+{:#x}", address, size
         );
         return Err(STATUS_ACCESS_VIOLATION);
     }
 
     // Ensure the address is valid and accessible
-    unsafe { ProbeForRead(address as _, size as _, 1) };
+    // If it's not, it raises an exception and since we don't have SEH, well, BSOD...
+    // TODO: figure out a way to make this safer
+    unsafe { ProbeForRead(address, size, 1) };
 
-    let mut bytes_written: usize = 0;
-    let status = unsafe {
-        ke_write_virtual_memory(process, buffer as _, address as _, size, &mut bytes_written)
-    };
+    let mut bytes_written = 0;
+    let status =
+        unsafe { ke_write_virtual_memory(process, buffer, address, size, &mut bytes_written) };
 
-    println!(
-        LogLevel::Info,
-        "Wrote {} bytes to {:#x}", bytes_written, address as usize
-    );
 
     if !nt_success(status) {
         println!(
             LogLevel::Error,
-            "Error copying VirtualMemory! Error: {:?}", status
+            "Error copying VirtualMemory! Error: {:#x}", status
         );
         return Err(STATUS_UNSUCCESSFUL);
     }
+    
+    println!(
+        LogLevel::Success,
+        "Wrote {} bytes to {:p}", bytes_written, address
+    );
 
-    ioctl_buffer.send_str(&format!(
-        "Copied {} bytes to {:#x}!",
-        bytes_written, address as usize
-    ))?;
+    ioctl_buffer.send_str(&format!("Copied {} bytes to {:p}!", bytes_written, address))?;
 
     Ok(())
 }

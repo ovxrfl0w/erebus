@@ -1,10 +1,10 @@
 use sysinfo::System;
 
-pub(crate) fn get_process_id(process_name: &str) -> Result<u64, String> {
+pub(crate) fn get_process_id(process_name: &str) -> Result<u32, String> {
     System::new_all()
         .processes_by_name(process_name.as_ref())
         .next()
-        .map(|process| process.pid().as_u32().into())
+        .map(|process| process.pid().as_u32())
         .ok_or_else(|| format!("No process found with name '{process_name}'"))
 }
 
